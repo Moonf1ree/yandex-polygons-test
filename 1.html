@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Редактор границ локации</title>
+<style>
+  :root {
+    --border: #dde1e6;
+    --text-muted: #6b7280;
+    --accent: #1e6fd9;
+    --danger: #c0392b;
+    --bg: #f7f8fa;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: #1a1d21;
+  }
+
+  .card {
+    max-width: 1040px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px 28px;
+  }
+
+  h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 0 0 24px;
+  }
+
+  .panel {
+    display: flex;
+    gap: 24px;
+    padding: 20px 0;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .panel:first-of-type {
+    border-top: none;
+  }
+
+  .panel-fields {
+    flex: 0 0 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .panel-fields h2 {
+    font-size: 14px;
+    margin: 0 0 4px;
+    color: #374151;
+  }
+
+  .panel-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: -6px 0 4px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+
+  textarea#geojson-text {
+    min-height: 220px;
+    resize: vertical;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .field-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .field-row > div {
+    flex: 1;
+  }
+
+  .error-text {
+    color: var(--danger);
+    font-size: 12px;
+    margin-top: -4px;
+  }
+
+  .panel-map {
+    flex: 1 1 480px;
+    min-width: 320px;
+  }
+
+  .map {
+    width: 100%;
+    height: 360px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #eee;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  button {
+    border: 1px solid var(--border);
+    background: #fff;
+    padding: 9px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #f2f4f7;
+  }
+
+  #save-btn {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  #save-btn:hover {
+    background: #1a5fbf;
+  }
+
+  #save-status {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  #save-status.status-error {
+    color: var(--danger);
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Редактор границ локации</h1>
+    <p class="subtitle">
+      Верхняя карта — где это место. Нижняя карта — чья это земля.
+    </p>
+
+    <!-- Верхняя карта: точка -->
+    <section class="panel">
+      <div class="panel-fields">
+        <h2>Координаты точки</h2>
+        <p class="panel-hint">Клик по карте или ручной ввод — обе стороны синхронизированы.</p>
+        <div class="field-row">
+          <div>
+            <label for="lat-input">Широта</label>
+            <input type="text" id="lat-input" inputmode="decimal" placeholder="55.751244" />
+          </div>
+          <div>
+            <label for="lng-input">Долгота</label>
+            <input type="text" id="lng-input" inputmode="decimal" placeholder="37.618423" />
+          </div>
+        </div>
+      </div>
+      <div class="panel-map">
+        <div id="pin-map" class="map"></div>
+      </div>
+    </section>
+
+    <!-- Нижняя карта: границы -->
+    <section class="panel">
+      <div class="panel-fields">
+        <h2>Границы (GeoJSON)</h2>
+        <p class="panel-hint">
+          Polygon / MultiPolygon, RFC 7946: [долгота, широта]. Клик рядом с первой
+          точкой контура замыкает его и начинает новый.
+        </p>
+        <div>
+          <label for="geojson-text">Полигон(ы)</label>
+          <textarea id="geojson-text" spellcheck="false"></textarea>
+        </div>
+        <p class="error-text" id="geojson-error" hidden></p>
+      </div>
+      <div class="panel-map">
+        <div id="boundary-map" class="map"></div>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button type="button" id="erase-vertex-btn">Стереть точку</button>
+      <button type="button" id="erase-all-btn">Стереть всё</button>
+      <button type="button" id="save-btn">Сохранить</button>
+      <span id="save-status"></span>
+    </div>
+  </div>
+
+  <!--
+    Классическая (не ES-модульная) загрузка — чтобы страница открывалась
+    напрямую как файл (file://) без CORS-ограничений на модули.
+    Ключ и ограничение по HTTP Referer настраиваются в консоли Яндекса:
+    https://yandex.ru/maps-api/console/services/
+  -->
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=YOUR_YANDEX_API_KEY&lang=ru_RU"></script>
+  <script src="2.js"></script>
+</body>
+</html>
