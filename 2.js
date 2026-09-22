@@ -26,10 +26,9 @@
 
 /* ============================== Константы ============================== */
 
-// TODO: замените на свой ключ Яндекс.Карт (JavaScript API, тариф «Бесплатный»,
-// https://yandex.ru/maps-api/console/services/). Не забудьте настроить
-// ограничение ключа по HTTP Referer в консоли Яндекса.
-const YANDEX_API_KEY = 'YOUR_YANDEX_API_KEY';
+// Ключ Яндекс.Карт указывается в 1.html, в src подключаемого <script> —
+// см. TODO рядом с ним. Здесь он не нужен: к моменту выполнения этого файла
+// API уже загружено с этим ключом.
 
 const MOSCOW_CENTER = [55.751244, 37.618423]; // центр Москвы
 const MOSCOW_ZOOM = 10; // примерно по границе МКАД
@@ -359,7 +358,7 @@ class PinMap {
     this._state.on('saved-changed', (payload) => this._renderSavedContour(payload.saved));
   }
 
-  _onPointChanged({ point, source }) {
+  _onPointChanged({ point }) {
     if (!point) return;
     if (!this._pin) {
       this._pin = new ymaps.Placemark(
@@ -372,7 +371,10 @@ class PinMap {
         this._state.setPoint(coords[0], coords[1], { source: 'pin-map' });
       });
       this._map.geoObjects.add(this._pin);
-    } else if (source !== 'pin-map') {
+    } else {
+      // Координаты выставляем безусловно, вне зависимости от источника
+      // изменения: перерисовка — не источник новых событий состояния,
+      // зациклиться здесь нечем (в отличие от полей ввода/текста).
       this._pin.geometry.setCoordinates([point.lat, point.lng]);
     }
     this._map.setCenter([point.lat, point.lng]);
